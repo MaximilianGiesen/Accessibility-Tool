@@ -131,17 +131,60 @@ image.getAccessibleAttributes().put(PdfName.Alt, new PdfString("Dies ist ein Bei
 ```
 ---
 ### **2.7 Formularfelder barrierefrei machen**
+
 ```java
-PdfTextFormField field = PdfFormField.createText(pdfDoc, new Rectangle(50, 650, 200, 20), "Name");
-field.setValue("Ihr Name");
-field.setAccessibilityProperties(new PdfAccessibilityProperties().setRole(PdfName.Fm));
+import com.itextpdf.kernel.pdf.*;
+import com.itextpdf.forms.*;
+import com.itextpdf.forms.fields.*;
+
+public class AccessibleForm {
+    public static void main(String[] args) throws Exception {
+        // PDF erstellen
+        PdfDocument pdfDoc = new PdfDocument(new PdfWriter("accessible_form.pdf"));
+        PdfAcroForm form = PdfAcroForm.getAcroForm(pdfDoc, true);
+
+        // Formularfeld hinzufügen
+        PdfTextFormField nameField = PdfTextFormField.createText(pdfDoc, new com.itextpdf.kernel.geom.Rectangle(50, 750, 200, 20), "name", "");
+
+        // Alternativtext für Barrierefreiheit setzen
+        nameField.getAccessibilityProperties().setAlternateDescription("Eingabefeld für den Namen");
+
+        // Formular dem Dokument hinzufügen
+        form.addField(nameField);
+        pdfDoc.close();
+    }
+}
 ```
 ---
 ### **2.8 Links korrekt kennzeichnen**
+
 ```java
-PdfLinkAnnotation link = new PdfLinkAnnotation(new Rectangle(100, 500, 200, 20));
-link.setAction(PdfAction.createURI("https://www.example.com"));
-link.setContents("Beispiel-Website mit detaillierter Beschreibung");
+import com.itextpdf.kernel.pdf.*;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Link;
+import com.itextpdf.kernel.geom.Rectangle;
+import com.itextpdf.kernel.pdf.action.PdfAction;
+import com.itextpdf.kernel.pdf.annot.PdfLinkAnnotation;
+
+public class AccessibleLink {
+    public static void main(String[] args) throws Exception {
+        // PDF-Dokument erstellen
+        PdfDocument pdf = new PdfDocument(new PdfWriter("accessible_links.pdf"));
+        Document document = new Document(pdf);
+
+        // Link-Erstellung
+        PdfLinkAnnotation linkAnnotation = new PdfLinkAnnotation(new Rectangle(0, 0));
+        linkAnnotation.setAction(PdfAction.createURI("https://www.example.com"));
+        Link link = new Link("Besuche unsere Website", linkAnnotation);
+
+        // Barrierefreiheit: Alternativtext setzen
+        link.getAccessibilityProperties().setAlternateDescription("Link zur Beispiel-Website");
+
+        // Link hinzufügen
+        document.add(link);
+        document.close();
+    }
+}
 ```
 ---
 ## **3. Fazit**
