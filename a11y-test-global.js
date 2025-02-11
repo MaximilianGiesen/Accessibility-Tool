@@ -1,12 +1,14 @@
-const { Builder } = require('selenium-webdriver');
-const AxeBuilder = require('@axe-core/webdriverjs');
-const fs = require('fs');
-const urlModule = require('url');
-const axios = require('axios');
-const cheerio = require('cheerio');
-const path = require('path');
+//Import der Module
 
-const baseUrl = 'https://haribo.com/';
+const { Builder } = require('selenium-webdriver'); // Zum automatisierten Öffnen von Webseiten im Chrome-Browser.
+const AxeBuilder = require('@axe-core/webdriverjs'); // Führt Barrierefreiheits-Tests nach WCAG und BITV durch.
+const fs = require('fs'); // Zum Speichern der Ergebnisse als Datei.
+const urlModule = require('url'); // Verarbeitung von relativen und absoluten Links.
+const axios = require('axios'); // Lädt Webseiten-Inhalte (HTML) mit HTTP-Anfragen.
+const cheerio = require('cheerio');// Parst das HTML, um Links zu extrahieren.
+const path = require('path'); // Arbeitet mit Dateipfaden.
+
+const baseUrl = 'https://arag.de/';
 const visitedUrls = new Set();
 const resultsDir = 'accessibility-results';
 
@@ -15,34 +17,36 @@ if (!fs.existsSync(resultsDir)) {
   fs.mkdirSync(resultsDir);
 }
 
-// Hauptobjekt für alle Ergebnisse
+// Globale Ereignisse initialisieren: Hauptobjekt für alle Ergebnisse
 let globalResults = {
-  timestamp: new Date().toISOString(),
+  timestamp: new Date().toISOString(), // Zeitpunkt des Tests
   baseUrl: baseUrl,
-  totalUrls: 0,
-  statistics: {
-    violations: 0,
-    nodeViolations: 0
+  totalUrls: 0, // Anzahl getesteter URLs
+  statistics: { // Gesamtzahl der Verstöße
+    violations: 0, // Liste aller gefundenen Verstöße gegen vordefinierte Regeln -
+    nodeViolations: 0 // Liste von Verstößen, die speziell auf einzelne Nodes (DOM-Elemente) zutreffen.
   },
-  urlResults: []
+  urlResults: [] // Liste der getesteten URLs mit Details.
 };
 
 // Funktion, um alle Links auf einer Seite zu extrahieren
 async function getLinks(pageUrl) {
-  const { data } = await axios.get(pageUrl);
-  const $ = cheerio.load(data);
+  const { data } = await axios.get(pageUrl);  // Lädt die HTML-Seite
+  const $ = cheerio.load(data);               // Parst das HTML mit Cheerio
   const links = [];
-  $('a').each((index, element) => {
+
+  $('a').each((index, element) => {           // Durchläuft alle <a>-Tags
     let href = $(element).attr('href');
     if (href) {
-      href = urlModule.resolve(baseUrl, href);
+      href = urlModule.resolve(baseUrl, href); // Macht relative URLs absolut
       if (href.startsWith(baseUrl) && !visitedUrls.has(href)) {
-        links.push(href);
-        visitedUrls.add(href);
+        links.push(href);                      // Speichert neue Links
+        visitedUrls.add(href);                 // Fügt zur "besuchten" Liste hinzu
       }
     }
   });
-  return links;
+
+  return links;  // Gibt die Liste der gefundenen Links zurück
 }
 
 // Funktion zum Durchführen des Accessibility-Tests
@@ -52,6 +56,7 @@ async function runAccessibilityTest(url) {
   try {
     await driver.get(url);
 
+    // Axe-core Test durchführen
     const results = await new AxeBuilder(driver)
       .options({ reporter: 'v2' })
       .withTags(['wcag2aa', 'wcag2a', 'bitv'])
