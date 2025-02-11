@@ -8,7 +8,7 @@ const axios = require('axios'); // Lädt Webseiten-Inhalte (HTML) mit HTTP-Anfra
 const cheerio = require('cheerio');// Parst das HTML, um Links zu extrahieren.
 const path = require('path'); // Arbeitet mit Dateipfaden.
 
-const baseUrl = 'https://arag.de/';
+const baseUrl = 'https://denkwerk.com/';
 const visitedUrls = new Set();
 const resultsDir = 'accessibility-results';
 
