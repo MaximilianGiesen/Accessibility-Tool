@@ -3,7 +3,7 @@ const AxeBuilder = require('@axe-core/webdriverjs');
 const fs = require('fs');
 
 const baseUrl = 'https://www.arag-partner.de';
-const postcodes = ["29456"];
+const postcodes = ["10115", "20095", "60311", "50667", "70173", "80331", "01067", "04109", "28195", "99084"];
 const visitedUrls = new Set();
 const allResults = []; // Array für alle Ergebnisse
 const violationCounts = {}; // Zähler für Verstöße
