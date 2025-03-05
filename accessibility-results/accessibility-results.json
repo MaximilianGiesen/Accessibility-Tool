@@ -1,0 +1,75 @@
+{
+  "timestamp": "2025-03-05T17:05:50.578Z",
+  "baseUrl": "http://jobs.multiloop.com/",
+  "totalUrls": 1,
+  "statistics": {
+    "violations": 1,
+    "nodeViolations": 1
+  },
+  "urlResults": [
+    {
+      "url": "http://jobs.multiloop.com/",
+      "timestamp": "2025-03-05T17:05:52.839Z",
+      "summary": {
+        "totalViolations": 1,
+        "totalNodeViolations": 1,
+        "violationCounts": {
+          "html-has-lang": 1
+        }
+      },
+      "details": {
+        "violations": [
+          {
+            "id": "html-has-lang",
+            "impact": "serious",
+            "tags": [
+              "cat.language",
+              "wcag2a",
+              "wcag311",
+              "TTv5",
+              "TT11.a",
+              "EN-301-549",
+              "EN-9.3.1.1",
+              "ACT"
+            ],
+            "description": "Ensure every HTML document has a lang attribute",
+            "help": "<html> element must have a lang attribute",
+            "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/html-has-lang?application=webdriverjs",
+            "nodes": [
+              {
+                "any": [
+                  {
+                    "id": "has-lang",
+                    "data": {
+                      "messageKey": "noLang"
+                    },
+                    "relatedNodes": [],
+                    "impact": "serious",
+                    "message": "The <html> element does not have a lang attribute"
+                  }
+                ],
+                "all": [],
+                "none": [],
+                "impact": "serious",
+                "html": "<html>",
+                "target": [
+                  "html"
+                ],
+                "location": {
+                  "selector": [
+                    "html"
+                  ],
+                  "snippet": "<html>",
+                  "xpath": "html"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "crawledUrls": [
+    "http://jobs.multiloop.com/"
+  ]
+}
