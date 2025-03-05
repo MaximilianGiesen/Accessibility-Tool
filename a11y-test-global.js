@@ -8,7 +8,7 @@ const axios = require('axios'); // Lädt Webseiten-Inhalte (HTML) mit HTTP-Anfra
 const cheerio = require('cheerio');// Parst das HTML, um Links zu extrahieren.
 const path = require('path'); // Arbeitet mit Dateipfaden.
 
-const baseUrl = 'https://parkweiher.koeln';
+const baseUrl = 'http://multiloop.com/';
 const visitedUrls = new Set();
 const resultsDir = 'accessibility-results';
 
@@ -138,7 +138,7 @@ async function crawlAndTest(url) {
   globalResults.crawledUrls = Array.from(visitedUrls);
 
   // Speichere alle Ergebnisse in einer einzigen JSON-Datei
-  const resultPath = path.join(resultsDir, 'accessibility-results.json');
+  const resultPath = path.join(resultsDir, 'accessibility-results-multiloop.json');
   fs.writeFileSync(resultPath, JSON.stringify(globalResults, null, 2));
 
   console.log('\nCrawling und Tests abgeschlossen:');
