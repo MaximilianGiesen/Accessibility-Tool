@@ -1,52 +1,68 @@
-//Import der Module
+// Proxy-Umgebungsvariablen deaktivieren
+delete process.env.HTTP_PROXY;
+delete process.env.http_proxy;
+delete process.env.HTTPS_PROXY;
+delete process.env.https_proxy;
 
-const { Builder } = require('selenium-webdriver'); // Zum automatisierten Öffnen von Webseiten im Chrome-Browser.
-const AxeBuilder = require('@axe-core/webdriverjs'); // Führt Barrierefreiheits-Tests nach WCAG und BITV durch.
-const fs = require('fs'); // Zum Speichern der Ergebnisse als Datei.
-const urlModule = require('url'); // Verarbeitung von relativen und absoluten Links.
-const axios = require('axios'); // Lädt Webseiten-Inhalte (HTML) mit HTTP-Anfragen.
-const cheerio = require('cheerio');// Parst das HTML, um Links zu extrahieren.
-const path = require('path'); // Arbeitet mit Dateipfaden.
 
-const baseUrl = 'http://jobs.multiloop.com/';
+// Import der Module
+const {Builder} = require('selenium-webdriver');
+const AxeBuilder = require('@axe-core/webdriverjs');
+const fs = require('fs');
+const urlModule = require('url');
+const axios = require('axios');
+const cheerio = require('cheerio');
+const path = require('path');
+const https = require('https');
+const HttpsProxyAgent = require('https-proxy-agent').default;
+
+// Konfiguration
+const baseUrl = 'https://lorenz-snacks.de/';
 const visitedUrls = new Set();
 const resultsDir = 'accessibility-results';
+const useProxy = false; // Proxy aktivieren oder deaktivieren
 
-// Erstelle das Ergebnisverzeichnis, falls es nicht existiert
+// HTTP-Agent je nach Proxy-Nutzung
+const agent = useProxy
+  ? new HttpsProxyAgent('http://10.0.12.28:3128')
+  : new https.Agent({secureProtocol: 'TLS_method'});
+
+// Ergebnisverzeichnis erstellen
 if (!fs.existsSync(resultsDir)) {
   fs.mkdirSync(resultsDir);
 }
 
-// Globale Ereignisse initialisieren: Hauptobjekt für alle Ergebnisse
+// Globales Ergebnisobjekt
 let globalResults = {
-  timestamp: new Date().toISOString(), // Zeitpunkt des Tests
+  timestamp: new Date().toISOString(),
   baseUrl: baseUrl,
-  totalUrls: 0, // Anzahl getesteter URLs
-  statistics: { // Gesamtzahl der Verstöße
-    violations: 0, // Liste aller gefundenen Verstöße gegen vordefinierte Regeln -
-    nodeViolations: 0 // Liste von Verstößen, die speziell auf einzelne Nodes (DOM-Elemente) zutreffen.
+  totalUrls: 0,
+  statistics: {
+    violations: 0,
+    nodeViolations: 0
   },
-  urlResults: [] // Liste der getesteten URLs mit Details.
+  urlResults: []
 };
 
-// Funktion, um alle Links auf einer Seite zu extrahieren
+// Funktion zum Extrahieren von Links
 async function getLinks(pageUrl) {
-  const { data } = await axios.get(pageUrl);  // Lädt die HTML-Seite
-  const $ = cheerio.load(data);               // Parst das HTML mit Cheerio
-  const links = [];
+  const {data} = await axios.get(pageUrl, {
+    httpsAgent: agent
+  });
 
-  $('a').each((index, element) => {           // Durchläuft alle <a>-Tags
+  const $ = cheerio.load(data);
+  const links = [];
+  $('a').each((index, element) => {
     let href = $(element).attr('href');
     if (href) {
-      href = urlModule.resolve(baseUrl, href); // Macht relative URLs absolut
+      href = urlModule.resolve(baseUrl, href);
       if (href.startsWith(baseUrl) && !visitedUrls.has(href)) {
-        links.push(href);                      // Speichert neue Links
-        visitedUrls.add(href);                 // Fügt zur "besuchten" Liste hinzu
+        links.push(href);
+        visitedUrls.add(href);
       }
     }
   });
-
-  return links;  // Gibt die Liste der gefundenen Links zurück
+  return links;
 }
 
 // Funktion zum Durchführen des Accessibility-Tests
@@ -56,29 +72,21 @@ async function runAccessibilityTest(url) {
   try {
     await driver.get(url);
 
-    // Axe-core Test durchführen
     const results = await new AxeBuilder(driver)
-      .options({ reporter: 'v2' })
+      .options({reporter: 'v2'})
       .withTags(['wcag2aa', 'wcag2a', 'bitv'])
       .analyze();
 
-    // Zähle nur noch Verstöße
     let urlViolations = 0;
     let urlNodeViolations = 0;
     const urlViolationCounts = {};
 
-    // Erweiterte Verarbeitung der Verstöße mit detaillierten Nodeinfos
     const processedViolations = results.violations.map(violation => {
       urlViolations++;
       urlNodeViolations += violation.nodes.length;
 
-      if (violation.id in urlViolationCounts) {
-        urlViolationCounts[violation.id] += violation.nodes.length;
-      } else {
-        urlViolationCounts[violation.id] = violation.nodes.length;
-      }
+      urlViolationCounts[violation.id] = (urlViolationCounts[violation.id] || 0) + violation.nodes.length;
 
-      // Erweitere die Node-Informationen
       const processedNodes = violation.nodes.map(node => ({
         ...node,
         location: {
@@ -94,9 +102,8 @@ async function runAccessibilityTest(url) {
       };
     });
 
-    // Erstelle ein Ergebnisobjekt für diese URL
     const urlResult = {
-      url: url,
+      url,
       timestamp: new Date().toISOString(),
       summary: {
         totalViolations: urlViolations,
@@ -108,7 +115,6 @@ async function runAccessibilityTest(url) {
       }
     };
 
-    // Füge die Ergebnisse zum globalen Objekt hinzu
     globalResults.urlResults.push(urlResult);
     globalResults.statistics.violations += urlViolations;
     globalResults.statistics.nodeViolations += urlNodeViolations;
@@ -124,20 +130,16 @@ async function runAccessibilityTest(url) {
 
 // Crawling und Tests durchführen
 async function crawlAndTest(url) {
-  // Teste zuerst die Start-URL
   await runAccessibilityTest(url);
 
-  // Hole dann alle Links und teste diese
   const links = await getLinks(url);
   for (const link of links) {
     await runAccessibilityTest(link);
   }
 
-  // Aktualisiere die Gesamtanzahl der URLs
   globalResults.totalUrls = visitedUrls.size;
   globalResults.crawledUrls = Array.from(visitedUrls);
 
-  // Speichere alle Ergebnisse in einer einzigen JSON-Datei
   const resultPath = path.join(resultsDir, 'accessibility-results.json');
   fs.writeFileSync(resultPath, JSON.stringify(globalResults, null, 2));
 
