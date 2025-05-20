@@ -4,7 +4,6 @@ delete process.env.http_proxy;
 delete process.env.HTTPS_PROXY;
 delete process.env.https_proxy;
 
-
 // Import der Module
 const {Builder} = require('selenium-webdriver');
 const AxeBuilder = require('@axe-core/webdriverjs');
@@ -17,10 +16,17 @@ const https = require('https');
 const HttpsProxyAgent = require('https-proxy-agent').default;
 
 // Konfiguration
-const baseUrl = 'https://lorenz-snacks.de/';
+const baseUrl = 'https://www.merci.de.stage.sto.adacor.net/de';
 const visitedUrls = new Set();
 const resultsDir = 'accessibility-results';
 const useProxy = false; // Proxy aktivieren oder deaktivieren
+
+// Basic Auth Konfiguration (für .htaccess-Schutz)
+const auth = {
+  enabled: true,
+  username: 'xxx', // <-- hier ersetzen
+  password: 'xxx'      // <-- hier ersetzen
+};
 
 // HTTP-Agent je nach Proxy-Nutzung
 const agent = useProxy
@@ -46,8 +52,16 @@ let globalResults = {
 
 // Funktion zum Extrahieren von Links
 async function getLinks(pageUrl) {
+  const authConfig = auth.enabled ? {
+    auth: {
+      username: auth.username,
+      password: auth.password
+    }
+  } : {};
+
   const {data} = await axios.get(pageUrl, {
-    httpsAgent: agent
+    httpsAgent: agent,
+    ...authConfig
   });
 
   const $ = cheerio.load(data);
@@ -70,7 +84,16 @@ async function runAccessibilityTest(url) {
   const driver = await new Builder().forBrowser('chrome').build();
 
   try {
-    await driver.get(url);
+    // URL mit eingebetteten Auth-Daten, falls nötig
+    let urlWithAuth = url;
+    if (auth.enabled) {
+      const parsed = new URL(url);
+      parsed.username = auth.username;
+      parsed.password = auth.password;
+      urlWithAuth = parsed.toString();
+    }
+
+    await driver.get(urlWithAuth);
 
     const results = await new AxeBuilder(driver)
       .options({reporter: 'v2'})
