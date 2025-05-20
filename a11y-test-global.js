@@ -16,7 +16,7 @@ const https = require('https');
 const HttpsProxyAgent = require('https-proxy-agent').default;
 
 // Konfiguration
-const baseUrl = 'https://www.merci.de.stage.sto.adacor.net/de';
+const baseUrl = 'https://www.haribo.com/de-de?locale=de-DE';
 const visitedUrls = new Set();
 const resultsDir = 'accessibility-results';
 const useProxy = false; // Proxy aktivieren oder deaktivieren
