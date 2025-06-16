@@ -4,9 +4,8 @@ delete process.env.http_proxy;
 delete process.env.HTTPS_PROXY;
 delete process.env.https_proxy;
 
-// Module importieren
+// Import der Module
 const {Builder} = require('selenium-webdriver');
-const chrome = require('selenium-webdriver/chrome');
 const AxeBuilder = require('@axe-core/webdriverjs');
 const fs = require('fs');
 const urlModule = require('url');
@@ -16,34 +15,34 @@ const path = require('path');
 const https = require('https');
 const {HttpsProxyAgent} = require('https-proxy-agent');
 
+
 // Konfiguration
 const baseUrl = 'https://cae-test-coremedia.mainova.de/de';
 const visitedUrls = new Set();
 const resultsDir = 'accessibility-results';
 const useProxy = true; // Proxy aktivieren oder deaktivieren
 
-// Basic Auth Konfiguration
+// Basic Auth Konfiguration (für .htaccess-Schutz)
 const auth = {
   enabled: true,
   username: 'xxx', // <-- hier ersetzen
-  password: 'xxx'  // <-- hier ersetzen
+  password: 'xxx'      // <-- hier ersetzen
 };
 
-// Proxy-Agent konfigurieren
-const proxyUrl = 'http://10.0.12.28:3128';
+// HTTP-Agent je nach Proxy-Nutzung
 const agent = useProxy
-  ? new HttpsProxyAgent(proxyUrl)
+  ? new HttpsProxyAgent('http://10.0.12.28:3128')
   : new https.Agent({secureProtocol: 'TLS_method'});
 
-// Ergebnisverzeichnis anlegen
+// Ergebnisverzeichnis erstellen
 if (!fs.existsSync(resultsDir)) {
   fs.mkdirSync(resultsDir);
 }
 
-// Globale Ergebnisse
+// Globales Ergebnisobjekt
 let globalResults = {
   timestamp: new Date().toISOString(),
-  baseUrl,
+  baseUrl: baseUrl,
   totalUrls: 0,
   statistics: {
     violations: 0,
@@ -52,7 +51,7 @@ let globalResults = {
   urlResults: []
 };
 
-// Links extrahieren
+// Funktion zum Extrahieren von Links
 async function getLinks(pageUrl) {
   const authConfig = auth.enabled ? {
     auth: {
@@ -81,24 +80,12 @@ async function getLinks(pageUrl) {
   return links;
 }
 
-// Accessibility-Test ausführen
+// Funktion zum Durchführen des Accessibility-Tests
 async function runAccessibilityTest(url) {
-  // Chrome mit Proxy und Zertifikatsausnahme konfigurieren
-  const options = new chrome.Options();
-  options.addArguments('--ignore-certificate-errors');
-  options.addArguments('--disable-web-security');
-  if (useProxy) {
-    options.addArguments(`--proxy-server=${proxyUrl}`);
-  }
-
-  const driver = await new Builder()
-    .forBrowser('chrome')
-    .setChromeOptions(options)
-    .build();
+  const driver = await new Builder().forBrowser('chrome').build();
 
   try {
-    console.log('Öffne URL:', url);
-
+    // URL mit eingebetteten Auth-Daten, falls nötig
     let urlWithAuth = url;
     if (auth.enabled) {
       const parsed = new URL(url);
@@ -107,14 +94,7 @@ async function runAccessibilityTest(url) {
       urlWithAuth = parsed.toString();
     }
 
-    try {
-      await driver.get(urlWithAuth);
-      console.log('Seite erfolgreich geöffnet:', urlWithAuth);
-    } catch (err) {
-      console.error('Fehler beim Laden der Seite:', urlWithAuth);
-      console.error(err.message);
-      return;
-    }
+    await driver.get(urlWithAuth);
 
     const results = await new AxeBuilder(driver)
       .options({reporter: 'v2'})
@@ -128,6 +108,7 @@ async function runAccessibilityTest(url) {
     const processedViolations = results.violations.map(violation => {
       urlViolations++;
       urlNodeViolations += violation.nodes.length;
+
       urlViolationCounts[violation.id] = (urlViolationCounts[violation.id] || 0) + violation.nodes.length;
 
       const processedNodes = violation.nodes.map(node => ({
@@ -166,13 +147,12 @@ async function runAccessibilityTest(url) {
       violations: urlViolations,
       nodeViolations: urlNodeViolations
     };
-
   } finally {
     await driver.quit();
   }
 }
 
-// Crawling und Tests starten
+// Crawling und Tests durchführen
 async function crawlAndTest(url) {
   await runAccessibilityTest(url);
 
@@ -194,6 +174,6 @@ async function crawlAndTest(url) {
   console.log(`\nAlle Ergebnisse wurden in "${resultPath}" gespeichert.`);
 }
 
-// Start
+// Starte den Crawl mit der Basis-URL
 visitedUrls.add(baseUrl);
 crawlAndTest(baseUrl).catch(console.error);
