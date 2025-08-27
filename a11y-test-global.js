@@ -17,10 +17,10 @@ const https = require('https');
 const {HttpsProxyAgent} = require('https-proxy-agent');
 
 // Konfiguration
-const baseUrl = 'https://cae-test-coremedia.mainova.de/de';
+const baseUrl = 'https://cae-test-coremedia.mainova.de/de/onlineservice/uc15-1/start/bestellung';
 const visitedUrls = new Set();
 const resultsDir = 'accessibility-results';
-const useProxy = true; // Proxy aktivieren oder deaktivieren
+const useProxy = false; // Proxy aktivieren oder deaktivieren
 
 // Basic Auth Konfiguration
 const auth = {

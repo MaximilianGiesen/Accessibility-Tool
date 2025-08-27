@@ -1,11 +1,5 @@
-// Proxy-Umgebungsvariablen deaktivieren
-delete process.env.HTTP_PROXY;
-delete process.env.http_proxy;
-delete process.env.HTTPS_PROXY;
-delete process.env.https_proxy;
-
-// Import der Module
-const {Builder} = require('selenium-webdriver');
+// Import Module
+const { Builder } = require('selenium-webdriver');
 const AxeBuilder = require('@axe-core/webdriverjs');
 const fs = require('fs');
 const urlModule = require('url');
@@ -13,33 +7,19 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const path = require('path');
 const https = require('https');
-const {HttpsProxyAgent} = require('https-proxy-agent');
-
 
 // Konfiguration
-const baseUrl = 'https://cae-test-coremedia.mainova.de/de';
+const baseUrl = 'https://www.denkwerk.com/';
 const visitedUrls = new Set();
 const resultsDir = 'accessibility-results';
-const useProxy = true; // Proxy aktivieren oder deaktivieren
 
-// Basic Auth Konfiguration (für .htaccess-Schutz)
-const auth = {
-  enabled: true,
-  username: 'xxx', // <-- hier ersetzen
-  password: 'xxx'      // <-- hier ersetzen
-};
+// HTTPS-Agent (ohne Proxy, ohne Env-Variablen)
+const httpsAgent = new https.Agent({ keepAlive: true });
 
-// HTTP-Agent je nach Proxy-Nutzung
-const agent = useProxy
-  ? new HttpsProxyAgent('http://10.0.12.28:3128')
-  : new https.Agent({secureProtocol: 'TLS_method'});
-
-// Ergebnisverzeichnis erstellen
 if (!fs.existsSync(resultsDir)) {
   fs.mkdirSync(resultsDir);
 }
 
-// Globales Ergebnisobjekt
 let globalResults = {
   timestamp: new Date().toISOString(),
   baseUrl: baseUrl,
@@ -51,18 +31,11 @@ let globalResults = {
   urlResults: []
 };
 
-// Funktion zum Extrahieren von Links
+// Extrahieren der Links
 async function getLinks(pageUrl) {
-  const authConfig = auth.enabled ? {
-    auth: {
-      username: auth.username,
-      password: auth.password
-    }
-  } : {};
-
-  const {data} = await axios.get(pageUrl, {
-    httpsAgent: agent,
-    ...authConfig
+  const { data } = await axios.get(pageUrl, {
+    httpsAgent,
+    proxy: false // sicherstellen, dass kein Proxy verwendet wird
   });
 
   const $ = cheerio.load(data);
@@ -80,25 +53,16 @@ async function getLinks(pageUrl) {
   return links;
 }
 
-// Funktion zum Durchführen des Accessibility-Tests
+// Accessibility-Tests
 async function runAccessibilityTest(url) {
   const driver = await new Builder().forBrowser('chrome').build();
 
   try {
-    // URL mit eingebetteten Auth-Daten, falls nötig
-    let urlWithAuth = url;
-    if (auth.enabled) {
-      const parsed = new URL(url);
-      parsed.username = auth.username;
-      parsed.password = auth.password;
-      urlWithAuth = parsed.toString();
-    }
-
-    await driver.get(urlWithAuth);
+    await driver.get(url);
 
     const results = await new AxeBuilder(driver)
-      .options({reporter: 'v2'})
-      .withTags(['wcag2aa', 'wcag2a', 'bitv'])
+      .options({ reporter: 'v2' })
+      .withTags(['wcag2aa', 'wcag2a'])
       .analyze();
 
     let urlViolations = 0;
@@ -109,7 +73,8 @@ async function runAccessibilityTest(url) {
       urlViolations++;
       urlNodeViolations += violation.nodes.length;
 
-      urlViolationCounts[violation.id] = (urlViolationCounts[violation.id] || 0) + violation.nodes.length;
+      urlViolationCounts[violation.id] =
+        (urlViolationCounts[violation.id] || 0) + violation.nodes.length;
 
       const processedNodes = violation.nodes.map(node => ({
         ...node,
@@ -152,7 +117,7 @@ async function runAccessibilityTest(url) {
   }
 }
 
-// Crawling und Tests durchführen
+// Crawling und Tests
 async function crawlAndTest(url) {
   await runAccessibilityTest(url);
 
@@ -174,6 +139,6 @@ async function crawlAndTest(url) {
   console.log(`\nAlle Ergebnisse wurden in "${resultPath}" gespeichert.`);
 }
 
-// Starte den Crawl mit der Basis-URL
+// Crawl mit der Basis-URL
 visitedUrls.add(baseUrl);
 crawlAndTest(baseUrl).catch(console.error);
